@@ -1,4 +1,4 @@
-service: whatthegoons-app-api
+service: whatthegoons-api
 
 # Create an optimized package for our functions 
 package:
@@ -9,14 +9,18 @@ plugins:
   - serverless-offline
   - serverless-dotenv-plugin # Load .env as environment variables
 
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  tableName: ${self:custom.stage}-posts
+
 provider:
   name: aws
   runtime: nodejs10.x
-  stage: prod
+  stage: dev
   region: us-east-1
 
   environment:
-     tableName: posts
+     tableName: ${self:custom.tableName}
      stripeSecretKey: ${env:STRIPE_SECRET_KEY}
 
   iamRoleStatements:
@@ -29,7 +33,8 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:us-east-1:239448513978:table/posts"
+      Resource:
+        - "Fn::GetAtt": [ PostsTable, Arn ]
 
 functions:
   create:
@@ -82,4 +87,12 @@ functions:
           authorizer: aws_iam
 
 resources:
+  # API Gateway Errors
   - ${file(resources/api-gateway-errors.yml)}
+  # DynamoDB
+  - ${file(resources/dynamodb-table.yml)}
+  # S3
+  - ${file(resources/s3-bucket.yml)}
+  # Cognito
+  - ${file(resources/cognito-user-pool.yml)}
+  - ${file(resources/cognito-identity-pool.yml)}
